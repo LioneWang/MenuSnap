@@ -20,6 +20,7 @@
 <div align="center">
   <p><i>Upload a menu photo and watch it transform into an interactive digital menu</i></p>
   <img width="3953" height="2342" alt="Image" src="https://github.com/user-attachments/assets/76d5ccab-8202-4d4b-9f60-bfd414544b41" />
+  <p><i>figma link: https://www.figma.com/design/SvVpIbtYdMh2E2ZLHG3aQ2/MenuSnap-UI?node-id=77-83&t=EfY6s0pbsfePoF2w-1</i></p>
 </div>
 
 ## ✨ Features
