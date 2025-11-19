@@ -7,8 +7,8 @@ from typing import List, Dict, Optional
 
 
 # ============ configuration ============
-GOOGLE_KEY = ""
-GOOGLE_CX  = ""
+GOOGLE_KEY = "AIzaSyBWjfsllZt7x3jwMaAu_P6VDUi9_e_URqM"
+GOOGLE_CX  = "233a894886fd54a8a"
 
 
 CANDIDATES_PER_DISH = 8
@@ -105,16 +105,25 @@ def best_image_for_dish(dish_name):
    return best_images
 
 
-def verify_image_url(url, timeout=3):
-   """
-   verify if the image url is accessible
-   url: image url
-   timeout: timeout
-   return: True if the image url is accessible, False otherwise
-   """
+def verify_image_url(url, timeout=5):
    try:
-       response = requests.head(url, timeout=timeout, allow_redirects=True)
-       return response.status_code == 200
+       problematic_domains = ['instagram.com', 'facebook.com', 'twitter.com']
+       if any(domain in url.lower() for domain in problematic_domains):
+           return False
+       
+       headers = {
+           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+       }
+       response = requests.head(url, timeout=timeout, allow_redirects=True, headers=headers)
+       
+       if response.status_code != 200:
+           return False
+       
+       content_type = response.headers.get('Content-Type', '').lower()
+       if content_type and not content_type.startswith('image/'):
+           return False
+       
+       return True
    except:
        return False
 
