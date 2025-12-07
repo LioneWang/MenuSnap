@@ -80,6 +80,7 @@ def pick_best_image_from_google(items, top_n=3):
            "area": area,
            "title": x.get("title"),
            "contextLink": image.get("contextLink") or x.get("link"),
+           "thumbnailLink": image.get("thumbnailLink", ""),
        })
   
    candidates.sort(key=lambda img: img["area"], reverse=True)

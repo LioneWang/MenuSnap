@@ -1,7 +1,9 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+from werkzeug.utils import secure_filename
 import os
 import re
+import uuid
 
 from get_best_image import get_valid_image_for_dish
 
@@ -63,11 +65,74 @@ app.config['IMAGE_SOURCE_FOLDER'] = IMAGE_SOURCE_FOLDER
 
 CORS(app, resources={
    r"/api/*": {
-       "origins": ["http://localhost:3000"], 
+       "origins": ["http://localhost:3000", "http://localhost:5173"],
        "methods": ["GET", "POST", "OPTIONS"],
        "allow_headers": ["Content-Type"]
    }
 })
+
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+@app.route('/api/upload-and-process', methods=['POST'])
+def upload_and_process():
+    try:
+        if 'image' not in request.files:
+            return jsonify({'success': False, 'error': 'No image file provided'}), 400
+        
+        file = request.files['image']
+        if file.filename == '':
+            return jsonify({'success': False, 'error': 'No file selected'}), 400
+        
+        if not allowed_file(file.filename):
+            return jsonify({'success': False, 'error': 'Invalid file type. Allowed: png, jpg, jpeg, gif, webp'}), 400
+        
+        original_filename = secure_filename(file.filename)
+        ext = original_filename.rsplit('.', 1)[1].lower() if '.' in original_filename else 'png'
+        unique_filename = f"{uuid.uuid4().hex}.{ext}"
+        
+        filepath = os.path.join(app.config['IMAGE_SOURCE_FOLDER'], unique_filename)
+        
+        os.makedirs(app.config['IMAGE_SOURCE_FOLDER'], exist_ok=True)
+        file.save(filepath)
+        
+        print(f"[Upload] File saved: {unique_filename}")
+        
+        ocr_result = paddle_service.predict_text_only(filepath)
+        
+        if not ocr_result.get('success'):
+            return jsonify({'success': False, 'error': 'OCR recognition failed'}), 500
+        
+        menu_items = ocr_result.get('menu_items', [])
+        print(f"[Upload] OCR detected {len(menu_items)} items")
+        
+        filtered_items = filter_dish_names(menu_items)
+        print(f"[Upload] After filtering: {len(filtered_items)} valid dishes")
+        
+        results = []
+        for item in filtered_items:
+            dish_name = item.get('dish', '')
+            if dish_name:
+                print(f"[Upload] Searching image for '{dish_name}'...")
+                image = get_valid_image_for_dish(dish_name, verbose=False)
+                results.append({
+                    'dish': dish_name,
+                    'price': item.get('price', ''),
+                    'image': image
+                })
+        
+        return jsonify({
+            'success': True,
+            'ocr_time': ocr_result.get('inference_time_seconds', 0),
+            'dishes_found': len(results),
+            'menu_with_images': results
+        })
+        
+    except Exception as e:
+        print(f"Error in upload_and_process: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/health', methods=['GET'])
 def health_check():
